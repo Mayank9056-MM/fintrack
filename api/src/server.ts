@@ -3,6 +3,7 @@ import { config } from "./config/config";
 import { app } from "./app";
 import logger from "./utils/logger";
 import connectDB, { getDBStatus } from "./db";
+import { EmailService } from "./services/emailService";
 
 const PORT = config.PORT;
 
@@ -35,6 +36,9 @@ const server = app.listen(PORT, async () => {
     await connectDB();
     // await connectRedis();
 
+    // Initialize email service
+    EmailService.initialize();
+
     const server = app.listen(PORT, () => {
       logger.info(
         `🚀 Server is running on port ${PORT} in ${config.NODE_ENV} mode`
@@ -47,6 +51,9 @@ const server = app.listen(PORT, async () => {
     logger.info(`   Health check: http://localhost:${PORT}/health`);
     logger.info(`   API Base: http://localhost:${PORT}/api`);
     logger.info(`   Database: ${config.MONGODB_URI.split("@")[1]}`);
+    logger.info(
+      `   Email Service: ${config.SMTP_HOST ? "Enabled" : "Disabled"}`
+    );
   } catch (error) {
     logger.error("Failed to start server:", error);
     process.exit(1);
