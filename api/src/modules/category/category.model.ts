@@ -87,8 +87,8 @@ const categorySchema = new Schema<ICategoryDocument>(
 
 // Indexes
 
-// Ensure category names are unique per type (e.g., two "Rent" under expense is invalid)
-categorySchema.index({ name: 1, type: 1 }, { unique: true });
+// Ensure category names are unique per type
+categorySchema.index({ name: 1, type: 1, createdBy: 1 }, { unique: true });
 categorySchema.index({ type: 1 });
 categorySchema.index({ createdBy: 1 });
 categorySchema.index({ isSystem: 1 });
