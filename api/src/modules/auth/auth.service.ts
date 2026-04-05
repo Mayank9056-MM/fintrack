@@ -18,6 +18,8 @@ import { ApiError } from "../../utils/ApiError";
 import logger from "../../utils/logger";
 import { uploadOnCloudinary } from "../../utils/cloudinary";
 import { EmailService } from "../../services/emailService";
+import AuditLog from "../audit/auditLog.models";
+import { AuditAction } from "../audit/auditLog.constant";
 
 /**
  * Hashes a raw token with SHA-256 before storing.
@@ -115,6 +117,15 @@ class AuthService {
       },
     });
 
+    await AuditLog.logAction({
+      performedBy: user._id.toString(),
+      action: AuditAction.REGISTER,
+      resource: "User",
+      resourceId: user._id.toString(),
+      ipAddress: input.ipAddress ?? undefined,
+      userAgent: input.userAgent ?? undefined,
+    });
+
     logger.info(`New user registered: ${user.email} [${user._id}]`);
 
     return user;
@@ -132,6 +143,12 @@ class AuthService {
     const user = await User.findActiveByEmail(input.email);
 
     if (!user) {
+      await AuditLog.logAction({
+        performedBy: "",
+        action: AuditAction.LOGIN,
+        resource: "User",
+        metadata: { email: input.email },
+      });
       throw new ApiError(401, "Invalid email or password.");
     }
 
@@ -149,6 +166,15 @@ class AuthService {
     });
 
     logger.info(`User logged in: ${user.email} [${user._id}]`);
+
+    await AuditLog.logAction({
+      performedBy: user._id.toString(),
+      action: AuditAction.LOGIN,
+      resource: "User",
+      resourceId: user._id.toString(),
+      ipAddress: input.ipAddress,
+      userAgent: input.userAgent,
+    });
 
     return response;
   }
@@ -190,6 +216,13 @@ class AuthService {
       userAgent: input.userAgent,
     });
 
+    await AuditLog.logAction({
+      performedBy: user._id.toString(),
+      action: AuditAction.REFRESH_ACCESS_TOKEN,
+      resource: "User",
+      resourceId: user._id.toString(),
+    });
+
     return { accessToken, refreshToken };
   }
 
@@ -207,6 +240,12 @@ class AuthService {
     if (tokenDoc) {
       await tokenDoc.revoke();
     }
+
+    await AuditLog.logAction({
+      performedBy: "",
+      action: AuditAction.LOGOUT,
+      resource: "User",
+    });
   }
 
   /**
@@ -217,6 +256,11 @@ class AuthService {
    */
   async logoutAll(userId: string): Promise<void> {
     await RefreshToken.revokeAllForUser(new mongoose.Types.ObjectId(userId));
+    await AuditLog.logAction({
+      performedBy: userId,
+      action: AuditAction.LOGOUT_ALL,
+      resource: "User",
+    });
     logger.info(`All sessions revoked for user [${userId}]`);
   }
 
@@ -251,6 +295,11 @@ class AuthService {
       await RefreshToken.revokeAllForUser(user._id);
 
       await session.commitTransaction();
+      await AuditLog.logAction({
+        performedBy: user._id.toString(),
+        action: AuditAction.PASSWORD_CHANGE,
+        resource: "User",
+      });
       logger.info(`Password changed for user [${user._id}]`);
     } catch (error) {
       await session.abortTransaction();
@@ -290,6 +339,11 @@ class AuthService {
 
     try {
       await EmailService.sendPasswordResetEmail(user.email, rawToken);
+      await AuditLog.logAction({
+        performedBy: user._id.toString(),
+        action: AuditAction.FORGOT_PASSWORD,
+        resource: "User",
+      });
       logger.info(`Password reset email sent to ${user.email}`);
     } catch (error) {
       user.resetPasswordToken = undefined;
@@ -333,6 +387,12 @@ class AuthService {
     await user.save({ validateBeforeSave: false });
 
     await RefreshToken.revokeAllForUser(user._id);
+
+    await AuditLog.logAction({
+      performedBy: user._id.toString(),
+      action: AuditAction.RESET_PASSWORD,
+      resource: "User",
+    });
 
     logger.info(`Password reset successful for user [${user._id}]`);
   }
@@ -381,6 +441,12 @@ class AuthService {
     user.emailVerificationToken = undefined;
     user.emailVerificationExpire = undefined;
     await user.save({ validateBeforeSave: false });
+
+    await AuditLog.logAction({
+      performedBy: user._id.toString(),
+      action: AuditAction.EMAIL_VERIFICATION,
+      resource: "User",
+    });
 
     logger.info(`Email verified for user [${user._id}]`);
   }
