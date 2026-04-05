@@ -5,6 +5,23 @@ import {
 } from "./financial-record.constant";
 import { z } from "zod";
 
+// Shared field definitions
+
+const objectIdField = (label: string) =>
+  z
+    .string({ error: `${label} is required` })
+    .refine((val) => mongoose.isValidObjectId(val), {
+      message: `Invalid ${label}`,
+    });
+
+const isoDateField = (label: string) =>
+  z
+    .string({ error: `${label} is required` })
+    .datetime({ message: `${label} must be a valid ISO 8601 datetime` })
+    .transform((val) => new Date(val));
+
+// Create
+
 export const CreateFinancialRecordSchema = z.object({
   amount: z
     .number({ error: "Amount is required" })
@@ -13,21 +30,12 @@ export const CreateFinancialRecordSchema = z.object({
     .max(999_999_999.99, "Amount is too large"),
 
   type: z.enum([TransactionType.INCOME, TransactionType.EXPENSE], {
-    error: () => ({
-      message: `Type must be one of: ${Object.values(TransactionType).join(", ")}`,
-    }),
+    error: `Type must be one of: ${Object.values(TransactionType).join(", ")}`,
   }),
 
-  category: z
-    .string({ error: "Category ID is required" })
-    .refine((val) => mongoose.isValidObjectId(val), {
-      message: "Invalid category ID",
-    }),
+  category: objectIdField("category ID"),
 
-  date: z.iso
-    .datetime({ message: "Date must be a valid ISO 8601 datetime" })
-    .or(z.date())
-    .transform((val) => new Date(val)),
+  date: isoDateField("Date"),
 
   notes: z
     .string()
@@ -56,16 +64,26 @@ export const CreateFinancialRecordSchema = z.object({
         RecurringInterval.YEARLY,
       ],
       {
-        error: () => ({
-          message: `Recurring must be one of: ${Object.values(RecurringInterval).join(", ")}`,
-        }),
+        error: `Recurring must be one of: ${Object.values(RecurringInterval).join(", ")}`,
       }
     )
     .default(RecurringInterval.NONE),
 });
 
+export type CreateFinancialRecordBody = z.infer<
+  typeof CreateFinancialRecordSchema
+>;
+
+// Update (all fields optional)
+
 export const UpdateFinancialRecordSchema =
   CreateFinancialRecordSchema.partial().strict();
+
+export type UpdateFinancialRecordBody = z.infer<
+  typeof UpdateFinancialRecordSchema
+>;
+
+// Filter / list query
 
 export const FilterFinancialRecordSchema = z
   .object({
@@ -78,35 +96,35 @@ export const FilterFinancialRecordSchema = z
 
     startDate: z.iso
       .datetime()
-      .or(z.date())
       .transform((val) => new Date(val))
       .optional(),
 
     endDate: z.iso
       .datetime()
-      .or(z.date())
       .transform((val) => new Date(val))
       .optional(),
 
-    minAmount: z
+    minAmount: z.coerce
       .number()
       .positive("Minimum amount must be positive")
       .optional(),
 
-    maxAmount: z
+    maxAmount: z.coerce
       .number()
       .positive("Maximum amount must be positive")
       .optional(),
 
-    tags: z.array(z.string().trim()).optional(),
-
+    tags: z
+      .string()
+      .transform((val) => val.split(",").map((t) => t.trim()))
+      .optional(),
     currency: z.string().length(3).toUpperCase().optional(),
 
-    isDeleted: z.boolean().default(false),
+    search: z.string().max(100).trim().optional(),
 
-    page: z.number().int().positive().default(1),
+    page: z.coerce.number().int().positive().default(1),
 
-    limit: z
+    limit: z.coerce
       .number()
       .int()
       .positive()
@@ -141,6 +159,10 @@ export const FilterFinancialRecordSchema = z
       path: ["maxAmount"],
     }
   );
+
+export type FilterFinancialRecordQuery = z.infer<
+  typeof FilterFinancialRecordSchema
+>;
 
 export type CreateFinancialRecordInput = z.infer<
   typeof CreateFinancialRecordSchema
