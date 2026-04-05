@@ -25,6 +25,8 @@ export interface RegisterInput {
   email: string;
   password: string;
   avatarLocalPath: string;
+  ipAddress?: string;
+  userAgent?: string;
 }
 
 export interface LoginInput {

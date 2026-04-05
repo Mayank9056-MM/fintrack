@@ -89,9 +89,13 @@ export const register = asyncHandler(async (req, res): Promise<void> => {
 
   const body = parseBody(RegisterSchema, req.body);
 
+  const { ipAddress, userAgent } = extractClientMeta(req);
+
   const user = await authService.register({
     ...body,
     avatarLocalPath,
+    ipAddress,
+    userAgent,
   });
 
   res.status(201).json({
