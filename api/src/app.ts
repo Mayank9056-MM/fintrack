@@ -88,8 +88,14 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
 });
 
 // import routes
+import authRouter from "./modules/auth/auth.routes";
+import fininacialRecordRouter from "./modules/financial-record/financial-record.routes";
+import categoryRouter from "./modules/category/category.routes";
 
 // routes
+app.use("/api/v1/auth", authRouter);
+app.use("/api/v1/finances", fininacialRecordRouter);
+app.use("/api/v1/category", categoryRouter);
 
 // It should be always at bottom
 // 404 handler
