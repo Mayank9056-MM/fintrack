@@ -1,6 +1,8 @@
 import { z } from "zod";
 import { CategoryType } from "./category.constants";
 
+// Create
+
 export const CreateCategorySchema = z.object({
   name: z
     .string({ error: "Category name is required" })
@@ -9,9 +11,7 @@ export const CreateCategorySchema = z.object({
     .trim(),
 
   type: z.enum([CategoryType.INCOME, CategoryType.EXPENSE, CategoryType.BOTH], {
-    error: () => ({
-      message: `Type must be one of: ${Object.values(CategoryType).join(", ")}`,
-    }),
+    error: `Type must be one of: ${Object.values(CategoryType).join(", ")}`,
   }),
 
   description: z
@@ -24,7 +24,7 @@ export const CreateCategorySchema = z.object({
     .string()
     .regex(
       /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/,
-      "Color must be a valid hex code"
+      "Color must be a valid hex code (e.g. #FF5733)"
     )
     .optional(),
 
@@ -32,16 +32,27 @@ export const CreateCategorySchema = z.object({
     .string()
     .max(50, "Icon name must be at most 50 characters")
     .trim()
-    .optional(), // Icon identifier, e.g. "shopping-cart"
-
-  isSystem: z.boolean().default(false), // System categories cannot be deleted
+    .optional(),
 });
 
-export const UpdateCategorySchema = CreateCategorySchema.omit({
-  isSystem: true,
-})
-  .partial()
-  .strict();
+// Update
 
-export type CreateCategoryInput = z.infer<typeof CreateCategorySchema>;
-export type UpdateCategoryInput = z.infer<typeof UpdateCategorySchema>;
+export const UpdateCategorySchema = CreateCategorySchema.partial().strict();
+
+// Filter / list query
+
+export const FilterCategorySchema = z.object({
+  type: z
+    .enum([CategoryType.INCOME, CategoryType.EXPENSE, CategoryType.BOTH])
+    .optional(),
+
+  includeSystem: z
+    .enum(["true", "false"])
+    .transform((val) => val === "true")
+    .default(true),
+
+  search: z.string().max(60).trim().optional(),
+
+  page: z.coerce.number().int().positive().default(1),
+  limit: z.coerce.number().int().positive().max(100).default(20),
+});
