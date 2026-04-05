@@ -1,0 +1,41 @@
+# Dependencies — installed fresh inside the image
+node_modules
+
+# Build output (builder stage generates it from source)
+dist
+
+# Environment files — secrets must never be baked into images
+.env
+.env.*
+!.env.example
+
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+.vscode
+.idea
+
+# Docker files themselves
+Dockerfile
+docker-compose.yml
+docker-compose.*.yml
+
+# Tests and docs — not needed at runtime
+__tests__
+*.test.ts
+*.spec.ts
+coverage
+README.md
+
+# Temp uploads (managed at runtime via Docker volume)
+public/temp
